@@ -1,6 +1,6 @@
 {
   "name": "pkg-lens-cli",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Pre-install security & bundle footprint inspector CLI tool and library for npm packages",
   "repository": {
     "type": "git",
