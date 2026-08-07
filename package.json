@@ -1,0 +1,42 @@
+{
+  "name": "pkg-lens-cli",
+  "version": "1.0.2",
+  "description": "Pre-install security & bundle footprint inspector CLI tool and library for npm packages",
+  "main": "./src/index.js",
+  "type": "module",
+  "bin": {
+    "pkg-lens": "bin/pkg-lens.js",
+    "pkg-lens-cli": "bin/pkg-lens.js"
+  },
+  "scripts": {
+    "start": "node ./bin/pkg-lens.js",
+    "test": "node --test test/*.test.js"
+  },
+  "files": [
+    "bin",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "npm",
+    "security",
+    "bundlephobia",
+    "bundle-size",
+    "audit",
+    "license-checker",
+    "dependencies",
+    "cli",
+    "preinstall"
+  ],
+  "author": "Ujwal Singamsetti",
+  "license": "MIT",
+  "dependencies": {
+    "cli-table3": "^0.6.5",
+    "ora": "^8.1.1",
+    "picocolors": "^1.1.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
