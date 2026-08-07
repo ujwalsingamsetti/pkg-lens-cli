@@ -1,47 +1,27 @@
 /**
  * @file formatter.js
  * Terminal report renderer utilizing picocolors and cli-table3
- * for clean visual presentations, badges, and alerts.
+ * with OSV vulnerability advisories and typosquatting alerts.
  */
 
 import pc from 'picocolors';
 import Table from 'cli-table3';
 
-/**
- * Format large numbers with commas (e.g., 1,234,567)
- * @param {number} num
- * @returns {string}
- */
 function formatNumber(num) {
   if (num === null || num === undefined || isNaN(num)) return '0';
   return num.toLocaleString('en-US');
 }
 
-/**
- * Create a colored badge string for risk levels.
- * @param {string} level - 'LOW' | 'MODERATE' | 'HIGH' | 'CRITICAL'
- * @returns {string} Styled badge text
- */
 function renderRiskBadge(level) {
   switch (level) {
-    case 'LOW':
-      return pc.bgGreen(pc.black(` SAFE (LOW RISK) `));
-    case 'MODERATE':
-      return pc.bgYellow(pc.black(` MODERATE RISK `));
-    case 'HIGH':
-      return pc.bgRed(pc.white(` HIGH RISK `));
-    case 'CRITICAL':
-      return pc.bgMagenta(pc.white(` CRITICAL RISK `));
-    default:
-      return pc.bgGray(pc.white(` ${level} `));
+    case 'LOW': return pc.bgGreen(pc.black(` SAFE (LOW RISK) `));
+    case 'MODERATE': return pc.bgYellow(pc.black(` MODERATE RISK `));
+    case 'HIGH': return pc.bgRed(pc.white(` HIGH RISK `));
+    case 'CRITICAL': return pc.bgMagenta(pc.white(` CRITICAL RISK `));
+    default: return pc.bgGray(pc.white(` ${level} `));
   }
 }
 
-/**
- * Render visual progress gauge bar for safety score [██████░░░░]
- * @param {number} safetyScore - 0 to 100 (100 = perfectly safe)
- * @returns {string}
- */
 function renderProgressBar(safetyScore) {
   const totalBlocks = 15;
   const filledBlocks = Math.round((safetyScore / 100) * totalBlocks);
@@ -58,28 +38,20 @@ function renderProgressBar(safetyScore) {
   return `[${coloredGauge}${pc.dim(emptyStr)}] ${safetyScore}/100`;
 }
 
-/**
- * Main report renderer function.
- * @param {object} analysis - Object returned from analyzePackage()
- * @returns {string} Formatted ANSI terminal string
- */
 export function formatPackageReport(analysis) {
   const lines = [];
 
-  // Header Banner
   lines.push('');
   lines.push(pc.bold(pc.cyan(` 🔍 PKG-LENS REPORT `)) + ` — ` + pc.bold(pc.white(`${analysis.name}@${analysis.version}`)));
   lines.push(pc.dim(` ${analysis.description}`));
   lines.push('');
 
-  // Overview Table
   const table = new Table({
     head: [pc.bold(pc.cyan('Metric')), pc.bold(pc.cyan('Evaluation & Details'))],
     colWidths: [22, 60],
     wordWrap: true
   });
 
-  // 1. Security & Safety
   const riskBadge = renderRiskBadge(analysis.security.level);
   const progressBar = renderProgressBar(analysis.security.safetyScore);
   table.push([
@@ -87,7 +59,30 @@ export function formatPackageReport(analysis) {
     `${riskBadge}  ${progressBar}`
   ]);
 
-  // Deprecated flag warning
+  // OSV Vulnerability Advisories
+  if (analysis.vulnerabilities.length > 0) {
+    const vulnSummary = analysis.vulnerabilities
+      .map((v) => pc.red(`• ${v.id}: `) + pc.yellow(v.summary))
+      .join('\n');
+    table.push([
+      pc.bold(pc.red('Vulnerabilities (CVE)')),
+      pc.bold(pc.red(`⚠️ DETECTED ${analysis.vulnerabilities.length} ADVISORY(IES):\n`)) + vulnSummary
+    ]);
+  } else {
+    table.push([
+      pc.bold('Vulnerabilities (CVE)'),
+      pc.green('✅ Clean (0 reported OSV vulnerabilities)')
+    ]);
+  }
+
+  // Typosquatting alert
+  if (analysis.typosquat?.isTyposquat) {
+    table.push([
+      pc.bold(pc.red('Typosquatting Risk')),
+      pc.red(`⚠️ POSSIBLE TYPOSQUAT: Similar to popular package "${analysis.typosquat.similarTo}"`)
+    ]);
+  }
+
   if (analysis.deprecated) {
     table.push([
       pc.bold(pc.red('Deprecation Warning')),
@@ -95,7 +90,6 @@ export function formatPackageReport(analysis) {
     ]);
   }
 
-  // 2. Lifecycle Scripts Audit
   if (analysis.scriptAudit.hasDangerousHooks) {
     const hookDetails = analysis.scriptAudit.hooks
       .map((h) => pc.red(`• ${h.name}: `) + pc.yellow(`"${h.command}"`))
@@ -111,7 +105,6 @@ export function formatPackageReport(analysis) {
     ]);
   }
 
-  // 3. Bundle Footprint
   const treeShakeText = analysis.footprint.isTreeShakeable
     ? pc.green('Yes ✅ (ESM / Side-effect free)')
     : pc.dim('No / Unknown ⚠️');
@@ -126,13 +119,11 @@ export function formatPackageReport(analysis) {
     treeShakeText
   ]);
 
-  // 4. Dependencies
   table.push([
     pc.bold('Dependencies'),
     `${pc.cyan(analysis.footprint.directDependenciesCount)} direct / ~${pc.cyan(analysis.footprint.totalDependenciesCount)} total`
   ]);
 
-  // 5. License
   let licenseColor = pc.green;
   if (analysis.license.riskLevel === 'HIGH') licenseColor = pc.red;
   else if (analysis.license.riskLevel === 'MODERATE') licenseColor = pc.yellow;
@@ -142,7 +133,6 @@ export function formatPackageReport(analysis) {
     licenseColor(`${analysis.license.label} (${analysis.license.category})`)
   ]);
 
-  // 6. Community & Maintainability
   const formattedRelease = analysis.releaseDate
     ? analysis.releaseDate.toISOString().split('T')[0]
     : 'Unknown';
@@ -159,7 +149,6 @@ export function formatPackageReport(analysis) {
 
   lines.push(table.toString());
 
-  // Risk Factors Summary callout box (if any)
   if (analysis.security.riskFactors.length > 0) {
     lines.push('');
     lines.push(pc.bold(pc.yellow(' ⚠️ RISK FACTORS & ALERT SUMMARY:')));

