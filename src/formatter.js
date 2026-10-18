@@ -1,7 +1,8 @@
 /**
  * @file formatter.js
  * Terminal report renderer utilizing picocolors and cli-table3
- * with OSV vulnerability advisories and typosquatting alerts.
+ * with OSV vulnerability advisories, typosquatting alerts, license compliance,
+ * maintenance health, dependency blast radius, and alternative recommendations.
  */
 
 import pc from 'picocolors';
@@ -83,6 +84,7 @@ export function formatPackageReport(analysis) {
     ]);
   }
 
+  // Deprecation Warning
   if (analysis.deprecated) {
     table.push([
       pc.bold(pc.red('Deprecation Warning')),
@@ -90,6 +92,7 @@ export function formatPackageReport(analysis) {
     ]);
   }
 
+  // Install Scripts
   if (analysis.scriptAudit.hasDangerousHooks) {
     const hookDetails = analysis.scriptAudit.hooks
       .map((h) => pc.red(`• ${h.name}: `) + pc.yellow(`"${h.command}"`))
@@ -105,46 +108,84 @@ export function formatPackageReport(analysis) {
     ]);
   }
 
-  const treeShakeText = analysis.footprint.isTreeShakeable
-    ? pc.green('Yes ✅ (ESM / Side-effect free)')
-    : pc.dim('No / Unknown ⚠️');
+  // Smarter Alternatives Recommendation
+  if (analysis.alternative) {
+    table.push([
+      pc.bold(pc.magenta('💡 Lighter Alternative')),
+      pc.bold(pc.magenta(`Consider: ${analysis.alternative.alternatives.join(', ')}\n`)) +
+      pc.dim(`${analysis.alternative.reason}\nSavings: ${analysis.alternative.savings || 'reduced bundle footprint'}`)
+    ]);
+  }
 
+  // Bundle Footprint
   table.push([
     pc.bold('Bundle Size (Gzip)'),
     `${pc.bold(pc.yellow(analysis.footprint.gzippedFormatted))} ${pc.dim(`(Minified: ${analysis.footprint.minifiedFormatted})`)}`
   ]);
 
+  // Tree-Shakeable
+  const treeShakeText = analysis.footprint.isTreeShakeable
+    ? pc.green('Yes ✅ (ESM / Side-effect free)')
+    : pc.dim('No / Unknown ⚠️');
   table.push([
     pc.bold('Tree-Shakeable'),
     treeShakeText
   ]);
 
+  // Dependency Blast Radius
+  let blastNote = '';
+  if (analysis.footprint.isHighBlastRadius) {
+    blastNote = pc.red(`\n⚠️ HIGH BLAST RADIUS: Brings ${analysis.footprint.transitiveDependenciesCount} transitive dependencies!`);
+  }
   table.push([
-    pc.bold('Dependencies'),
-    `${pc.cyan(analysis.footprint.directDependenciesCount)} direct / ~${pc.cyan(analysis.footprint.totalDependenciesCount)} total`
+    pc.bold('Dependencies & Blast'),
+    `${pc.cyan(analysis.footprint.directDependenciesCount)} direct / ~${pc.cyan(analysis.footprint.totalDependenciesCount)} total (${pc.dim(analysis.footprint.blastRadiusRatio + 'x ratio')})${blastNote}`
   ]);
 
+  // License Compliance
   let licenseColor = pc.green;
-  if (analysis.license.riskLevel === 'HIGH') licenseColor = pc.red;
-  else if (analysis.license.riskLevel === 'MODERATE') licenseColor = pc.yellow;
+  let licenseVerdict = 'Commercial Safe ✅';
+  if (analysis.license.category === 'STRONG_COPYLEFT') {
+    licenseColor = pc.red;
+    licenseVerdict = 'Copyleft Risk (GPL/AGPL) ⚠️';
+  } else if (analysis.license.category === 'WEAK_COPYLEFT') {
+    licenseColor = pc.yellow;
+    licenseVerdict = 'Weak Copyleft (LGPL/MPL) ℹ️';
+  } else if (analysis.license.riskLevel === 'HIGH') {
+    licenseColor = pc.red;
+    licenseVerdict = 'High Risk / Ambiguous ⚠️';
+  }
 
   table.push([
-    pc.bold('License Safety'),
-    licenseColor(`${analysis.license.label} (${analysis.license.category})`)
+    pc.bold('License Compliance'),
+    licenseColor(`${analysis.license.label} (${analysis.license.category}) — ${licenseVerdict}`)
   ]);
 
-  const formattedRelease = analysis.releaseDate
-    ? analysis.releaseDate.toISOString().split('T')[0]
-    : 'Unknown';
-
+  // Downloads
   table.push([
     pc.bold('Downloads (Weekly)'),
     `${pc.bold(formatNumber(analysis.downloadsWeekly))} / week`
   ]);
 
+  // Maintenance & Abandonware Health
+  const formattedRelease = analysis.releaseDate
+    ? analysis.releaseDate.toISOString().split('T')[0]
+    : 'Unknown';
+
+  let maintenanceNote = '';
+  if (analysis.maintenance.isAbandoned) {
+    maintenanceNote = pc.red(`\n⚠️ UNMAINTAINED: Last release was > 2 years ago!`);
+  } else if (analysis.maintenance.isStale) {
+    maintenanceNote = pc.yellow(`\n⚠️ STALE: No releases in over a year.`);
+  }
+
+  if (analysis.maintenance.busFactorRisk) {
+    maintenanceNote += pc.yellow(`\n⚠️ Bus Factor: Maintained by a single person.`);
+  }
+
   table.push([
-    pc.bold('Maintainers & Release'),
-    `${analysis.maintainersCount} maintainer(s) • Last release: ${formattedRelease}`
+    pc.bold('Maintenance & Health'),
+    `${analysis.maintainersCount} maintainer(s) • Last release: ${formattedRelease}${maintenanceNote}`
   ]);
 
   lines.push(table.toString());

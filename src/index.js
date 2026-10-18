@@ -7,6 +7,9 @@ import { fetchPackageDetails } from './fetcher.js';
 import { analyzePackage } from './analyzer.js';
 import { formatPackageReport } from './formatter.js';
 import { comparePackages } from './comparator.js';
+import { safeInstallPackage } from './installer.js';
+import { auditProject } from './auditor.js';
+import { getAlternativeRecommendation } from './alternatives.js';
 
 /**
  * Inspect an npm package programmatically.
@@ -30,5 +33,8 @@ export {
   fetchPackageDetails,
   analyzePackage,
   formatPackageReport,
-  comparePackages
+  comparePackages,
+  safeInstallPackage,
+  auditProject,
+  getAlternativeRecommendation
 };
