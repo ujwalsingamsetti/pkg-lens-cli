@@ -1,6 +1,6 @@
 {
   "name": "pkg-lens-cli",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Pre-install security & bundle footprint inspector, developer advisor, project auditor & safe package installer",
   "repository": {
     "type": "git",

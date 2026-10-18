@@ -90,7 +90,7 @@ async function main() {
   }
 
   if (args.includes('-v') || args.includes('--version')) {
-    console.log('pkg-lens-cli v1.2.0');
+    console.log('pkg-lens-cli v1.2.1');
     process.exit(0);
   }
 
